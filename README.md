@@ -10,11 +10,15 @@ and found reports.
 
 ## Features
 
+- Email accounts (sign up / log in) powered by Supabase Auth
 - Report lost or found items with a photo, category, brand, color, location and date
-- Browse, search and filter open reports
+- Link credits for every published report (`+10` lost, `+15` found)
+- Browse, search and filter open reports — reports never disappear from the feed
 - "Find matches" compares a report against all open reports of the opposite type
 - Match results show a percentage score, strength label and the fields that matched
-- Mark a report as resolved so it leaves the open list
+- When two reports match at **70% or higher**, the reporter of the selected report
+  sees the other member's name, email and optional phone number
+- Contact details are never included in the public report list
 - Item photos are served through short-lived signed URLs from a private bucket
 
 ## Project structure
@@ -25,10 +29,16 @@ LostLink/
 │   ├── app/
 │   │   ├── config.py            # Environment settings
 │   │   ├── database.py          # Supabase client
+│   │   ├── dependencies.py      # Bearer-token auth dependency
 │   │   ├── main.py              # FastAPI app + CORS
-│   │   ├── routes/reports.py    # API endpoints
-│   │   ├── schemas/report.py    # Response models
+│   │   ├── routes/
+│   │   │   ├── auth.py          # Signup, login, refresh, profile
+│   │   │   └── reports.py       # Reports, matches, credits, contacts
+│   │   ├── schemas/
+│   │   │   ├── auth.py          # Account models
+│   │   │   └── report.py        # Report models
 │   │   └── services/
+│   │       ├── auth.py          # Supabase Auth helpers
 │   │       ├── matching.py      # Similarity scoring
 │   │       └── storage.py       # Signed image URLs
 │   ├── test_matching.py
@@ -55,6 +65,10 @@ LostLink/
 2. Open **SQL Editor** and run the schema below.
 3. Open **Storage → New bucket**, create a **private** bucket named `item-images`.
 4. Copy the project URL and `service_role` key from **Project Settings → API**.
+
+Accounts use Supabase Auth, so no extra tables are needed: names, credits and
+contact details live in each user's metadata and are managed by the backend with
+the service-role key.
 
 ```sql
 create extension if not exists "pgcrypto";
@@ -107,6 +121,9 @@ Create `backend/.env` from `.env.example` and fill in the Supabase values:
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_KEY=your-service-role-key
 ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174
+CONTACT_REVEAL_THRESHOLD=70
+LOST_REPORT_POINTS=10
+FOUND_REPORT_POINTS=15
 ```
 
 Run the API:
@@ -176,14 +193,25 @@ default) are hidden.
 | --- | --- | --- |
 | `GET` | `/` | API welcome message |
 | `GET` | `/health` | Health check |
-| `POST` | `/api/reports` | Create a report (`multipart/form-data`) |
+| `POST` | `/api/auth/signup` | Create an account (JSON: full name, email, password) |
+| `POST` | `/api/auth/login` | Log in and receive access/refresh tokens |
+| `POST` | `/api/auth/refresh` | Exchange a refresh token for a new session |
+| `GET` | `/api/auth/me` | Current profile, credits and contact details |
+| `POST` | `/api/reports` | Create a report (login required, `multipart/form-data`) |
 | `GET` | `/api/reports?report_type=lost` | List open reports |
 | `GET` | `/api/matches/{report_id}?min_score=25&limit=20` | Find matches |
-| `PATCH` | `/api/reports/{report_id}/status` | Set status to `open` or `resolved` |
 
-`POST /api/reports` accepts: `report_type`, `item_name`, `category`,
-`description`, `color`, `brand`, `location_text`, `event_date` and `image`
-(JPG, PNG or WEBP, max 5 MB).
+`POST /api/reports` requires `Authorization: Bearer <access_token>` and accepts:
+`report_type`, `item_name`, `category`, `description`, `color`, `brand`,
+`location_text`, `event_date`, `contact_name`, `contact_email`,
+`contact_phone` (optional) and `image` (JPG, PNG or WEBP, max 5 MB).
+
+Credit awards: `+10` for a lost report and `+15` for a found report.
+
+`GET /api/matches/{report_id}` accepts the same bearer token. When the token
+belongs to the member who posted the selected report, matches scoring at or above
+`CONTACT_REVEAL_THRESHOLD` (70 by default) include the other reporter's contact
+details; for everyone else those details stay hidden.
 
 ## Deployment
 
@@ -222,14 +250,17 @@ Use the Dockerfile in `backend/` and set the same environment variables.
 
 - `GET https://your-backend/health` returns `{"status":"ok"}`
 - The frontend loads reports and images
-- Submitting a report works
+- Signing up and logging in works
+- Publishing a report awards credits and shows them in the header
 - CORS allows the deployed frontend origin
 
 ## Security notes
 
-- The API currently has no authentication. Anyone who can reach it can submit
-  reports or mark them resolved. Add Supabase Auth (and a `user_id` check) before
-  a public launch.
+- Publishing a report requires a valid Supabase access token. The API verifies
+  every token before writing and never exposes the service-role key.
+- Contact details are stored on the account and returned only from
+  `/api/matches/{id}`, only to the member who posted the selected report, and
+  only when the match scores 70% or higher.
 - The storage bucket is private; images are exposed only through signed URLs
   that expire after `IMAGE_URL_TTL` seconds (one day by default).
 - Reported text is validated and length-limited, and uploads are restricted to
