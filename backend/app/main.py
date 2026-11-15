@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import ALLOWED_ORIGINS
+from app.routes.auth import router as auth_router
 from app.routes.reports import router as reports_router
 
 logging.basicConfig(
@@ -29,6 +30,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router)
 app.include_router(reports_router)
 
 

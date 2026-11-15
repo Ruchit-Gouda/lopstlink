@@ -17,6 +17,9 @@ frontend/dist/
 frontend/.env
 frontend/.env.local
 
+# Hosting CLI metadata
+frontend/.vercel/
+
 # Editor / OS
 .vscode/
 .idea/

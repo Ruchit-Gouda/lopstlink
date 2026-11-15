@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from app.schemas.auth import ContactOut
+
 
 class ReportOut(BaseModel):
     id: str
@@ -30,17 +32,13 @@ class MatchOut(BaseModel):
     report: ReportOut
     similarity_score: float
     match_reasons: list[str] = []
+    contact_available: bool = False
+    contact_unlocked: bool = False
+    contact: ContactOut | None = None
 
 
 class MatchesResponse(BaseModel):
     selected_report: ReportOut
     matches: list[MatchOut]
-
-
-class StatusUpdate(BaseModel):
-    status: Literal["open", "resolved"]
-
-
-class StatusResponse(BaseModel):
-    message: str
-    report: ReportOut
+    contact_threshold: float = 70
+    viewer_is_owner: bool = False

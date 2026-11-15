@@ -2,12 +2,22 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
+  Coins,
   RefreshCw,
+  ShieldCheck,
+  Sparkles,
   X,
 } from "lucide-react";
 import "./App.css";
-import { createReport, fetchMatches, fetchReports, updateReportStatus } from "./api";
-import ConfirmDialog from "./components/ConfirmDialog";
+import {
+  createReport,
+  fetchMatches,
+  fetchMe,
+  fetchReports,
+  getSession,
+  logout as endSession,
+} from "./api";
+import AuthDialog from "./components/AuthDialog";
 import EmptyState from "./components/EmptyState";
 import FilterBar from "./components/FilterBar";
 import Header from "./components/Header";
@@ -43,9 +53,10 @@ export default function App() {
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [matchesByReport, setMatchesByReport] = useState({});
-  const [resolvingId, setResolvingId] = useState(null);
-  const [pendingResolve, setPendingResolve] = useState(null);
   const [notice, setNotice] = useState(null);
+  const [user, setUser] = useState(() => getSession()?.user ?? null);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState("login");
 
   const showNotice = useCallback((type, text) => {
     setNotice({ type, text });
@@ -57,6 +68,28 @@ export default function App() {
     const timer = window.setTimeout(() => setNotice(null), 5000);
     return () => window.clearTimeout(timer);
   }, [notice]);
+
+  useEffect(() => {
+    if (!getSession()) return undefined;
+
+    let active = true;
+
+    fetchMe()
+      .then((profile) => {
+        if (active && profile) setUser(profile);
+      })
+      .catch((error) => {
+        if (!active) return;
+        if (error.status === 401 || error.status === 403) {
+          endSession();
+          setUser(null);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const loadReports = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -97,10 +130,50 @@ export default function App() {
 
   const hasFilters = filter !== "all" || normalizedQuery.length > 0;
 
+  function openAuth(mode = "login") {
+    setAuthMode(mode);
+    setAuthOpen(true);
+  }
+
+  function handleAuthenticated(profile, mode) {
+    setUser(profile);
+    setAuthOpen(false);
+    setMatchesByReport({});
+
+    const firstName = (profile.full_name || "there").split(" ")[0];
+
+    showNotice(
+      "success",
+      mode === "signup"
+        ? `Welcome to LostLink, ${firstName}!`
+        : `Welcome back, ${firstName}!`,
+    );
+  }
+
+  function handleLogout() {
+    endSession();
+    setUser(null);
+    setMatchesByReport({});
+    showNotice("success", "You have been logged out.");
+  }
+
   async function handleCreate(formData) {
-    await createReport(formData);
-    showNotice("success", "Report submitted. We'll start looking for matches.");
+    const data = await createReport(formData);
+
+    if (data.user) setUser(data.user);
+
+    const awarded = data.credits?.awarded || 0;
+    const total = data.credits?.total || 0;
+
+    showNotice(
+      "success",
+      awarded > 0
+        ? `Report published · +${awarded} credits (${total} total)`
+        : "Report published. We'll start looking for matches.",
+    );
+
     await loadReports({ silent: true });
+    return data;
   }
 
   async function handleFindMatches(reportId) {
@@ -113,46 +186,18 @@ export default function App() {
       const data = await fetchMatches(reportId, MIN_SCORE);
       setMatchesByReport((previous) => ({
         ...previous,
-        [reportId]: { status: "ready", data: data.matches || [] },
+        [reportId]: {
+          status: "ready",
+          data: data.matches || [],
+          threshold: data.contact_threshold ?? 70,
+          viewerIsOwner: Boolean(data.viewer_is_owner),
+        },
       }));
     } catch (error) {
       setMatchesByReport((previous) => ({
         ...previous,
         [reportId]: { status: "error", error: error.message },
       }));
-    }
-  }
-
-  function handleResolve(report) {
-    setPendingResolve(report);
-  }
-
-  const cancelResolve = useCallback(() => {
-    setPendingResolve(null);
-  }, []);
-
-  async function confirmResolve() {
-    const report = pendingResolve;
-    if (!report) return;
-
-    setResolvingId(report.id);
-
-    try {
-      await updateReportStatus(report.id, "resolved");
-      setReports((previous) =>
-        previous.filter((item) => item.id !== report.id),
-      );
-      setMatchesByReport((previous) => {
-        const next = { ...previous };
-        delete next[report.id];
-        return next;
-      });
-      showNotice("success", `"${report.item_name}" marked as resolved.`);
-    } catch (error) {
-      showNotice("error", error.message);
-    } finally {
-      setResolvingId(null);
-      setPendingResolve(null);
     }
   }
 
@@ -165,11 +210,33 @@ export default function App() {
     <div className="app">
       <Header
         counts={{ open: counts.all, lost: counts.lost, found: counts.found }}
+        user={user}
+        onLogin={() => openAuth("login")}
+        onLogout={handleLogout}
       />
+
+      <div className="trust-bar">
+        <span className="trust-bar__item">
+          <Sparkles size={13} aria-hidden="true" />
+          AI match scoring
+        </span>
+        <span className="trust-bar__item">
+          <ShieldCheck size={13} aria-hidden="true" />
+          Contacts unlock at 70%
+        </span>
+        <span className="trust-bar__item">
+          <Coins size={13} aria-hidden="true" />
+          Earn credits for every report
+        </span>
+      </div>
 
       <main className="layout">
         <section className="panel" aria-labelledby="report-form-heading">
-          <ReportForm onCreated={handleCreate} onNotice={showNotice} />
+          <ReportForm
+            user={user}
+            onCreated={handleCreate}
+            onRequireAuth={() => openAuth("login")}
+          />
         </section>
 
         <section className="reports" aria-labelledby="reports-heading">
@@ -235,9 +302,8 @@ export default function App() {
                   key={report.id}
                   report={report}
                   matchState={matchesByReport[report.id]}
+                  signedIn={Boolean(user)}
                   onFindMatches={handleFindMatches}
-                  onResolve={handleResolve}
-                  resolving={resolvingId === report.id}
                 />
               ))}
             </div>
@@ -251,19 +317,14 @@ export default function App() {
         <span>Campus lost &amp; found, matched intelligently</span>
       </footer>
 
-      <ConfirmDialog
-        open={Boolean(pendingResolve)}
-        title="Mark this report as resolved?"
-        description={
-          pendingResolve
-            ? `"${pendingResolve.item_name}" will be removed from the open reports list. You can open it again from the database if needed.`
-            : ""
-        }
-        confirmLabel="Mark resolved"
-        busy={Boolean(resolvingId)}
-        onCancel={cancelResolve}
-        onConfirm={confirmResolve}
-      />
+      {authOpen && (
+        <AuthDialog
+          key={authMode}
+          mode={authMode}
+          onClose={() => setAuthOpen(false)}
+          onAuthenticated={handleAuthenticated}
+        />
+      )}
 
       {notice && (
         <div

@@ -26,6 +26,13 @@ IMAGE_URL_TTL = int(os.getenv("IMAGE_URL_TTL", "86400"))
 # Reports below this similarity score are not returned as matches.
 MATCH_THRESHOLD = float(os.getenv("MATCH_THRESHOLD", "25"))
 
+# Contact details are only released when two reports score at least this much.
+CONTACT_REVEAL_THRESHOLD = float(os.getenv("CONTACT_REVEAL_THRESHOLD", "70"))
+
+# Link credits earned for publishing a report.
+LOST_REPORT_POINTS = int(os.getenv("LOST_REPORT_POINTS", "10"))
+FOUND_REPORT_POINTS = int(os.getenv("FOUND_REPORT_POINTS", "15"))
+
 _default_origins = (
     "http://localhost:5173,http://127.0.0.1:5173,"
     "http://localhost:5174,http://127.0.0.1:5174"

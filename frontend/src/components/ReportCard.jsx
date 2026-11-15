@@ -1,6 +1,5 @@
 import {
   CalendarDays,
-  CheckCircle2,
   ImageOff,
   Loader2,
   MapPin,
@@ -14,9 +13,8 @@ import MatchList from "./MatchList";
 export default function ReportCard({
   report,
   matchState,
+  signedIn,
   onFindMatches,
-  onResolve,
-  resolving,
 }) {
   const isSearching = matchState?.status === "loading";
 
@@ -98,25 +96,12 @@ export default function ReportCard({
             )}
             {isSearching ? "Comparing…" : "Find matches"}
           </button>
-
-          <button
-            type="button"
-            className="btn btn--ghost btn--sm"
-            onClick={() => onResolve(report)}
-            disabled={resolving}
-          >
-            {resolving ? (
-              <Loader2 size={15} className="spin" aria-hidden="true" />
-            ) : (
-              <CheckCircle2 size={15} aria-hidden="true" />
-            )}
-            {resolving ? "Updating…" : "Mark resolved"}
-          </button>
         </div>
 
         {matchState && (
           <MatchList
             state={matchState}
+            signedIn={signedIn}
             onRetry={() => onFindMatches(report.id)}
           />
         )}
