@@ -1,0 +1,304 @@
+import { useEffect, useRef, useState } from "react";
+import {
+  CalendarDays,
+  Loader2,
+  PackageOpen,
+  Search,
+  Upload,
+  X,
+} from "lucide-react";
+import { todayISO } from "../utils/format";
+
+const CATEGORY_SUGGESTIONS = [
+  "Phone",
+  "Laptop",
+  "Wallet",
+  "Bag",
+  "Documents",
+  "Keys",
+  "Bottle",
+  "Clothing",
+  "Accessories",
+  "Books",
+  "Other",
+];
+
+function emptyForm(reportType = "lost") {
+  return {
+    report_type: reportType,
+    item_name: "",
+    category: "",
+    brand: "",
+    color: "",
+    location_text: "",
+    event_date: todayISO(),
+    description: "",
+  };
+}
+
+export default function ReportForm({ onCreated, onNotice }) {
+  const [form, setForm] = useState(() => emptyForm());
+  const [image, setImage] = useState(null);
+  const [preview, setPreview] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const fileRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview);
+    };
+  }, [preview]);
+
+  function handleChange(event) {
+    const { name, value } = event.target;
+    setForm((previous) => ({ ...previous, [name]: value }));
+  }
+
+  function handleImage(event) {
+    const file = event.target.files?.[0] || null;
+
+    if (!file) {
+      setImage(null);
+      setPreview("");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image must be smaller than 5 MB.");
+      event.target.value = "";
+      return;
+    }
+
+    setError("");
+    setImage(file);
+    setPreview((previous) => {
+      if (previous) URL.revokeObjectURL(previous);
+      return URL.createObjectURL(file);
+    });
+  }
+
+  function clearImage() {
+    setImage(null);
+    setPreview("");
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setError("");
+
+    if (!image) {
+      setError("Please choose a photo of the item.");
+      return;
+    }
+
+    const formData = new FormData();
+    Object.entries(form).forEach(([key, value]) => {
+      formData.append(key, value);
+    });
+    formData.append("image", image);
+
+    try {
+      setSubmitting(true);
+      await onCreated(formData);
+      setForm(emptyForm(form.report_type));
+      clearImage();
+      onNotice?.("success", "Report submitted. We'll start looking for matches.");
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="form-card">
+      <div className="panel-heading">
+        <div>
+          <h2>Report an item</h2>
+          <p>Lost something or found something? Add the details below.</p>
+        </div>
+      </div>
+
+      <form className="report-form" onSubmit={handleSubmit}>
+        <div className="type-toggle" role="group" aria-label="Report type">
+          <button
+            type="button"
+            className={`type-toggle__btn${
+              form.report_type === "lost" ? " is-active" : ""
+            }`}
+            aria-pressed={form.report_type === "lost"}
+            onClick={() =>
+              setForm((previous) => ({ ...previous, report_type: "lost" }))
+            }
+          >
+            <Search size={16} aria-hidden="true" />
+            I lost something
+          </button>
+          <button
+            type="button"
+            className={`type-toggle__btn${
+              form.report_type === "found" ? " is-active" : ""
+            }`}
+            aria-pressed={form.report_type === "found"}
+            onClick={() =>
+              setForm((previous) => ({ ...previous, report_type: "found" }))
+            }
+          >
+            <PackageOpen size={16} aria-hidden="true" />
+            I found something
+          </button>
+        </div>
+
+        <div className="field">
+          <label htmlFor="item_name">Item name</label>
+          <input
+            id="item_name"
+            name="item_name"
+            value={form.item_name}
+            onChange={handleChange}
+            placeholder="Black wallet, iPhone 15, water bottle…"
+            maxLength={120}
+            required
+          />
+        </div>
+
+        <div className="field-row">
+          <div className="field">
+            <label htmlFor="category">Category</label>
+            <input
+              id="category"
+              name="category"
+              value={form.category}
+              onChange={handleChange}
+              placeholder="Wallet"
+              list="category-suggestions"
+              maxLength={80}
+              required
+            />
+            <datalist id="category-suggestions">
+              {CATEGORY_SUGGESTIONS.map((category) => (
+                <option key={category} value={category} />
+              ))}
+            </datalist>
+          </div>
+
+          <div className="field">
+            <label htmlFor="color">Color</label>
+            <input
+              id="color"
+              name="color"
+              value={form.color}
+              onChange={handleChange}
+              placeholder="Black"
+              maxLength={60}
+            />
+          </div>
+        </div>
+
+        <div className="field-row">
+          <div className="field">
+            <label htmlFor="brand">Brand</label>
+            <input
+              id="brand"
+              name="brand"
+              value={form.brand}
+              onChange={handleChange}
+              placeholder="Optional"
+              maxLength={80}
+            />
+          </div>
+
+          <div className="field">
+            <label htmlFor="event_date">Date</label>
+            <div className="input-with-icon">
+              <CalendarDays size={16} aria-hidden="true" />
+              <input
+                id="event_date"
+                type="date"
+                name="event_date"
+                value={form.event_date}
+                onChange={handleChange}
+                max={todayISO()}
+                required
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="field">
+          <label htmlFor="location_text">Location</label>
+          <input
+            id="location_text"
+            name="location_text"
+            value={form.location_text}
+            onChange={handleChange}
+            placeholder="Library, cafeteria, hostel block…"
+            maxLength={160}
+            required
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="description">Description</label>
+          <textarea
+            id="description"
+            name="description"
+            value={form.description}
+            onChange={handleChange}
+            placeholder="Distinguishing marks, contents, where you last saw it…"
+            maxLength={1000}
+            required
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="image">Photo</label>
+
+          {preview ? (
+            <div className="upload upload--filled">
+              <img src={preview} alt="Selected item preview" />
+              <button
+                type="button"
+                className="upload__remove"
+                onClick={clearImage}
+                aria-label="Remove selected image"
+              >
+                <X size={16} aria-hidden="true" />
+              </button>
+            </div>
+          ) : (
+            <label className="upload upload--empty" htmlFor="image">
+              <span className="upload__icon" aria-hidden="true">
+                <Upload size={20} />
+              </span>
+              <span className="upload__text">
+                <strong>Upload a photo</strong>
+                <small>JPG, PNG or WEBP · up to 5 MB</small>
+              </span>
+              <input
+                ref={fileRef}
+                id="image"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleImage}
+              />
+            </label>
+          )}
+        </div>
+
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
+
+        <button type="submit" className="btn btn--primary btn--full" disabled={submitting}>
+          {submitting && <Loader2 size={17} className="spin" aria-hidden="true" />}
+          {submitting ? "Submitting…" : "Submit report"}
+        </button>
+      </form>
+    </div>
+  );
+}
