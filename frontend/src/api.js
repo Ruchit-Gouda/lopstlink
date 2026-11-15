@@ -1,6 +1,7 @@
-const API_URL = (
-  import.meta.env.VITE_API_URL || "http://127.0.0.1:8000"
-).replace(/\/+$/, "");
+// Empty by default so the app calls relative "/api/..." paths. In local
+// development Vite proxies those to the backend; in production set
+// VITE_API_URL to the deployed backend origin.
+const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
 
 function errorMessage(data, status) {
   if (data && typeof data.detail === "string") return data.detail;
