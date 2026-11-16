@@ -1,4 +1,5 @@
 import { Coins, Link2, LogIn, LogOut } from "lucide-react";
+import AppLink from "./AppLink";
 
 function initials(name, email) {
   const source = (name || email || "?").trim();
@@ -11,11 +12,36 @@ function initials(name, email) {
   return source.slice(0, 2).toUpperCase();
 }
 
-export default function Header({ counts, user, onLogin, onLogout }) {
+export default function Header({
+  counts,
+  user,
+  route,
+  onLogin,
+  onLogout,
+  onNavigate,
+}) {
+  const isHome = route?.name === "home";
+  const isBrowse = route?.name === "browse";
+  const isLost = isBrowse && route.filter === "lost";
+  const isFound = isBrowse && route.filter === "found";
+  const isAll = isBrowse && route.filter === "all";
+
+  const links = [
+    { label: "Home", to: "/", active: isHome },
+    { label: "Lost", to: "/browse/lost", active: isLost },
+    { label: "Found", to: "/browse/found", active: isFound },
+    { label: "Browse", to: "/browse", active: isAll },
+  ];
+
   return (
     <header className="site-header">
       <div className="site-header__inner">
-        <a className="brand" href="/" aria-label="LostLink home">
+        <AppLink
+          to="/"
+          onNavigate={onNavigate}
+          className="brand"
+          aria-label="LostLink home"
+        >
           <span className="brand__mark" aria-hidden="true">
             <Link2 size={22} strokeWidth={2.2} />
           </span>
@@ -23,7 +49,21 @@ export default function Header({ counts, user, onLogin, onLogout }) {
             <strong>LostLink</strong>
             <span>Campus lost &amp; found</span>
           </span>
-        </a>
+        </AppLink>
+
+        <nav className="site-nav" aria-label="Primary navigation">
+          {links.map((link) => (
+            <AppLink
+              key={link.to}
+              to={link.to}
+              onNavigate={onNavigate}
+              className={`site-nav__link${link.active ? " is-active" : ""}`}
+              aria-current={link.active ? "page" : undefined}
+            >
+              {link.label}
+            </AppLink>
+          ))}
+        </nav>
 
         <div className="header-right">
           <div className="header-stats" aria-label="Open report statistics">

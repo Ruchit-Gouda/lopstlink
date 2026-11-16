@@ -1,13 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  AlertCircle,
-  CheckCircle2,
-  Coins,
-  RefreshCw,
-  ShieldCheck,
-  Sparkles,
-  X,
-} from "lucide-react";
+import { AlertCircle, CheckCircle2, X } from "lucide-react";
 import "./App.css";
 import {
   createReport,
@@ -18,45 +10,26 @@ import {
   logout as endSession,
 } from "./api";
 import AuthDialog from "./components/AuthDialog";
-import EmptyState from "./components/EmptyState";
-import FilterBar from "./components/FilterBar";
 import Header from "./components/Header";
-import ReportCard from "./components/ReportCard";
-import ReportForm from "./components/ReportForm";
-import SkeletonCard from "./components/SkeletonCard";
+import SiteFooter from "./components/SiteFooter";
+import BrowsePage from "./pages/BrowsePage";
+import HomePage from "./pages/HomePage";
+import { parseRoute } from "./router";
 
 const MIN_SCORE = 25;
-
-function matchesFilter(report, filter, query) {
-  if (filter !== "all" && report.report_type !== filter) return false;
-  if (!query) return true;
-
-  const haystack = [
-    report.item_name,
-    report.category,
-    report.description,
-    report.color,
-    report.brand,
-    report.location_text,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
-  return haystack.includes(query);
-}
 
 export default function App() {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
+  const [route, setRoute] = useState(() => parseRoute());
   const [matchesByReport, setMatchesByReport] = useState({});
   const [notice, setNotice] = useState(null);
   const [user, setUser] = useState(() => getSession()?.user ?? null);
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState("login");
+  const [formRequest, setFormRequest] = useState({ type: "lost", key: 0 });
 
   const showNotice = useCallback((type, text) => {
     setNotice({ type, text });
@@ -68,6 +41,19 @@ export default function App() {
     const timer = window.setTimeout(() => setNotice(null), 5000);
     return () => window.clearTimeout(timer);
   }, [notice]);
+
+  useEffect(() => {
+    function handlePopState() {
+      setRoute(parseRoute());
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [route.path]);
 
   useEffect(() => {
     if (!getSession()) return undefined;
@@ -118,17 +104,17 @@ export default function App() {
     [reports],
   );
 
-  const normalizedQuery = query.trim().toLowerCase();
+  const navigate = useCallback((path) => {
+    if (!path) return;
 
-  const visibleReports = useMemo(
-    () =>
-      reports.filter((report) =>
-        matchesFilter(report, filter, normalizedQuery),
-      ),
-    [reports, filter, normalizedQuery],
-  );
+    const nextRoute = parseRoute(path);
 
-  const hasFilters = filter !== "all" || normalizedQuery.length > 0;
+    if (path !== `${window.location.pathname}${window.location.search}`) {
+      window.history.pushState({}, "", path);
+    }
+
+    setRoute(nextRoute);
+  }, []);
 
   function openAuth(mode = "login") {
     setAuthMode(mode);
@@ -201,121 +187,68 @@ export default function App() {
     }
   }
 
-  function resetFilters() {
-    setFilter("all");
-    setQuery("");
+  function handleReport(type) {
+    const reportType = type === "found" ? "found" : "lost";
+
+    setFormRequest((previous) => ({
+      type: reportType,
+      key: previous.key + 1,
+    }));
+
+    navigate("/browse");
+
+    window.setTimeout(() => {
+      document
+        .getElementById("report-form")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 120);
   }
+
+  const isHome = route.name === "home";
 
   return (
     <div className="app">
       <Header
         counts={{ open: counts.all, lost: counts.lost, found: counts.found }}
         user={user}
+        route={route}
         onLogin={() => openAuth("login")}
         onLogout={handleLogout}
+        onNavigate={navigate}
       />
 
-      <div className="trust-bar">
-        <span className="trust-bar__item">
-          <Sparkles size={13} aria-hidden="true" />
-          AI match scoring
-        </span>
-        <span className="trust-bar__item">
-          <ShieldCheck size={13} aria-hidden="true" />
-          Contacts unlock at 70%
-        </span>
-        <span className="trust-bar__item">
-          <Coins size={13} aria-hidden="true" />
-          Earn credits for every report
-        </span>
-      </div>
+      {isHome ? (
+        <HomePage
+          reports={reports}
+          loading={loading}
+          counts={counts}
+          query={query}
+          onQueryChange={setQuery}
+          onNavigate={navigate}
+          onReport={handleReport}
+        />
+      ) : (
+        <BrowsePage
+          route={route}
+          counts={counts}
+          reports={reports}
+          loading={loading}
+          loadError={loadError}
+          onRefresh={loadReports}
+          user={user}
+          onRequireAuth={() => openAuth("login")}
+          onCreated={handleCreate}
+          matchesByReport={matchesByReport}
+          onFindMatches={handleFindMatches}
+          query={query}
+          onQueryChange={setQuery}
+          onNavigate={navigate}
+          initialType={formRequest.type}
+          formKey={formRequest.key}
+        />
+      )}
 
-      <main className="layout">
-        <section className="panel" aria-labelledby="report-form-heading">
-          <ReportForm
-            user={user}
-            onCreated={handleCreate}
-            onRequireAuth={() => openAuth("login")}
-          />
-        </section>
-
-        <section className="reports" aria-labelledby="reports-heading">
-          <div className="reports__heading">
-            <div>
-              <h2 id="reports-heading">Community reports</h2>
-              <p>Browse open reports or search for a possible match.</p>
-            </div>
-
-            <div className="reports__heading-actions">
-              <span className="count-pill">{counts.all} open</span>
-              <button
-                type="button"
-                className="icon-btn"
-                onClick={() => loadReports()}
-                disabled={loading}
-                aria-label="Refresh reports"
-                title="Refresh reports"
-              >
-                <RefreshCw
-                  size={16}
-                  className={loading ? "spin" : undefined}
-                  aria-hidden="true"
-                />
-              </button>
-            </div>
-          </div>
-
-          <FilterBar
-            filter={filter}
-            onFilterChange={setFilter}
-            query={query}
-            onQueryChange={setQuery}
-            counts={counts}
-          />
-
-          {loadError ? (
-            <div className="load-error" role="alert">
-              <AlertCircle size={20} aria-hidden="true" />
-              <div>
-                <strong>Could not load reports</strong>
-                <p>{loadError}</p>
-              </div>
-              <button
-                type="button"
-                className="btn btn--ghost btn--sm"
-                onClick={() => loadReports()}
-              >
-                Retry
-              </button>
-            </div>
-          ) : loading ? (
-            <div className="report-list">
-              <SkeletonCard />
-              <SkeletonCard />
-            </div>
-          ) : visibleReports.length === 0 ? (
-            <EmptyState searching={hasFilters} onReset={resetFilters} />
-          ) : (
-            <div className="report-list">
-              {visibleReports.map((report) => (
-                <ReportCard
-                  key={report.id}
-                  report={report}
-                  matchState={matchesByReport[report.id]}
-                  signedIn={Boolean(user)}
-                  onFindMatches={handleFindMatches}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-      </main>
-
-      <footer className="site-footer">
-        <span>LostLink</span>
-        <span aria-hidden="true">·</span>
-        <span>Campus lost &amp; found, matched intelligently</span>
-      </footer>
+      <SiteFooter counts={counts} onNavigate={navigate} />
 
       {authOpen && (
         <AuthDialog

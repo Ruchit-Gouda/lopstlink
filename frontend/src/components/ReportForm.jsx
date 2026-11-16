@@ -44,8 +44,13 @@ function emptyForm(reportType = "lost") {
   };
 }
 
-export default function ReportForm({ user, onCreated, onRequireAuth }) {
-  const [form, setForm] = useState(() => emptyForm());
+export default function ReportForm({
+  user,
+  onCreated,
+  onRequireAuth,
+  defaultType = "lost",
+}) {
+  const [form, setForm] = useState(() => emptyForm(defaultType));
   const [contact, setContact] = useState({
     contact_name: "",
     contact_email: "",
@@ -183,7 +188,7 @@ export default function ReportForm({ user, onCreated, onRequireAuth }) {
     <div className="form-card">
       <div className="panel-heading">
         <div>
-          <h2>Report an item</h2>
+          <h2 id="report-form-heading">Report an item</h2>
           <p>Lost something or found something? Add the details below.</p>
         </div>
       </div>
