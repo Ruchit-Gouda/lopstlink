@@ -147,6 +147,106 @@ black_phone_busstand = report(
     brand="Iqoo",
     location_text="Moodbidri bus stand",
 )
+wallet_cafeteria = report(
+    "lost",
+    "Black Wallet",
+    "Wallet",
+    "black leather wallet with my college ID",
+    "Black",
+    location_text="Cafeteria",
+    event_date="2026-11-14",
+)
+wallet_canteen = report(
+    "found",
+    "Leather Wallet",
+    "Wallet",
+    "found a black wallet near the canteen",
+    "black",
+    location_text="Canteen",
+    event_date="2026-11-16",
+)
+pendrive_lost = report(
+    "lost",
+    "Pendrive",
+    "Accessories",
+    "32gb sandisk pendrive",
+    brand="SanDisk",
+    location_text="Computer lab",
+)
+usb_found = report(
+    "found",
+    "USB drive",
+    "Accessories",
+    "32gb sandisk usb drive",
+    brand="SanDisk",
+    location_text="Lab",
+)
+iphone_white = report(
+    "lost",
+    "iPhone 15",
+    "Phone",
+    "iphone 15",
+    "White",
+    brand="Apple",
+    location_text="Library",
+)
+iphone_black = report(
+    "found",
+    "iPhone 15",
+    "Phone",
+    "iphone 15",
+    "Black",
+    brand="Apple",
+    location_text="Library",
+)
+earphones_black = report(
+    "lost",
+    "Earphones",
+    "Accessories",
+    "black wired earphones",
+    "Black",
+    location_text="Room",
+)
+speaker_black = report(
+    "found",
+    "Speaker",
+    "Accessories",
+    "black bluetooth speaker",
+    "Black",
+    location_text="Room",
+)
+shirt_blue = report(
+    "lost",
+    "Blue shirt",
+    "Clothing",
+    "blue shirt",
+    "Blue",
+    location_text="Hostel",
+)
+jeans_blue = report(
+    "found",
+    "Blue jeans",
+    "Clothing",
+    "blue jeans",
+    "Blue",
+    location_text="Hostel",
+)
+pen_blue = report(
+    "lost",
+    "Pen",
+    "Other",
+    "blue pen",
+    "Blue",
+    location_text="Classroom",
+)
+pencil_blue = report(
+    "found",
+    "Pencil",
+    "Other",
+    "blue pencil",
+    "Blue",
+    location_text="Classroom",
+)
 
 CASES = [
     ("live bottle pair", live_bottle_lost, live_bottle_found, ">=", 90),
@@ -157,9 +257,15 @@ CASES = [
     ("white iPhone vs black Iqoo", white_iphone_lost, live_iqoo_found, "<", 70),
     ("iPhone 17 vs iPhone 15", white_iphone_lost, white_iphone_other, "<", 70),
     ("iPhone vs Samsung", white_iphone_lost, samsung_found, "<", 70),
+    ("iPhone same model, different colour", iphone_white, iphone_black, "<", 70),
     ("typo bottle pair", typo_bottle_lost, typo_bottle_found, ">=", 95),
     ("black wallet vs phone", black_wallet, black_phone_busstand, "<", 25),
     ("black wallet vs bottle", black_wallet, live_bottle_found, "<", 25),
+    ("wallet: cafeteria vs canteen", wallet_cafeteria, wallet_canteen, ">=", 90),
+    ("pendrive vs USB drive", pendrive_lost, usb_found, ">=", 95),
+    ("earphones vs speaker", earphones_black, speaker_black, "<", 25),
+    ("shirt vs jeans", shirt_blue, jeans_blue, "<", 25),
+    ("pen vs pencil", pen_blue, pencil_blue, "<", 25),
 ]
 
 failures = 0

@@ -1,15 +1,21 @@
+import { useMemo, useState } from "react";
 import {
   ArrowRight,
+  ArrowUpRight,
+  BadgeCheck,
   CalendarDays,
   Coins,
   HeartHandshake,
   ImageOff,
   Inbox,
+  Layers3,
+  LockKeyhole,
   MapPin,
   PackageOpen,
   Search,
   ShieldCheck,
   Sparkles,
+  Tag,
   Upload,
 } from "lucide-react";
 import AppLink from "../components/AppLink";
@@ -17,6 +23,12 @@ import { formatDate, reportTypeLabel } from "../utils/format";
 import { filterReports } from "../utils/reports";
 
 const QUICK_SEARCHES = ["Phone", "Bottle", "Wallet", "ID card"];
+
+const FEED_TABS = [
+  { value: "all", label: "All uploads" },
+  { value: "lost", label: "Lost" },
+  { value: "found", label: "Found" },
+];
 
 const HOW_IT_WORKS = [
   {
@@ -27,13 +39,23 @@ const HOW_IT_WORKS = [
   {
     icon: Sparkles,
     title: "We compare every detail",
-    text: "Item name, category, colour, brand, location and date are scored together by the match engine.",
+    text: "Item name, category, colour, brand, location, date and description are scored together by the match engine.",
   },
   {
     icon: HeartHandshake,
     title: "Reconnect at 70%+",
     text: "When a pair is strong enough, the reporter sees the other person's contact details and can reach out.",
   },
+];
+
+const SIGNALS = [
+  "Item",
+  "Category",
+  "Colour",
+  "Brand",
+  "Place",
+  "Date",
+  "Details",
 ];
 
 function HeroActivity({ report, onNavigate }) {
@@ -71,7 +93,7 @@ function HomeReportCard({ report, onNavigate }) {
     <AppLink
       to={`/browse/${report.report_type}`}
       onNavigate={onNavigate}
-      className="home-card"
+      className={`home-card home-card--${report.report_type}`}
     >
       <span className="home-card__media">
         {report.image_url ? (
@@ -85,6 +107,11 @@ function HomeReportCard({ report, onNavigate }) {
 
         <span className={`badge badge--${report.report_type}`}>
           {reportTypeLabel(report.report_type)}
+        </span>
+
+        <span className="home-card__category">
+          <Tag size={11} aria-hidden="true" />
+          {report.category}
         </span>
       </span>
 
@@ -106,10 +133,10 @@ function HomeReportCard({ report, onNavigate }) {
 
         <span className="home-card__footer">
           <span className={`home-card__dot home-card__dot--${report.report_type}`} />
-          {report.category}
+          {report.report_type === "lost" ? "Lost report" : "Found report"}
           <span className="home-card__open">
-            View {report.report_type} reports
-            <ArrowRight size={13} aria-hidden="true" />
+            Open
+            <ArrowUpRight size={13} aria-hidden="true" />
           </span>
         </span>
       </span>
@@ -131,6 +158,27 @@ function HomeSkeleton() {
   );
 }
 
+function CategoryPreview({ reports }) {
+  if (!reports.length) return null;
+
+  return (
+    <span className="category-card__preview" aria-hidden="true">
+      {reports.slice(0, 3).map((report) => (
+        <span className="category-card__preview-item" key={report.id}>
+          <span className="category-card__preview-thumb">
+            {report.image_url ? (
+              <img src={report.image_url} alt="" loading="lazy" />
+            ) : (
+              <ImageOff size={12} />
+            )}
+          </span>
+          <span>{report.item_name}</span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
 export default function HomePage({
   reports,
   loading,
@@ -140,16 +188,36 @@ export default function HomePage({
   onNavigate,
   onReport,
 }) {
+  const [feedFilter, setFeedFilter] = useState("all");
+  const [feedLimit, setFeedLimit] = useState(6);
+
   const normalizedQuery = query.trim();
   const liveResults = normalizedQuery
     ? filterReports(reports, "all", normalizedQuery)
     : [];
   const activity = (reports || []).slice(0, 3);
-  const recent = (reports || []).slice(0, 6);
+  const lostReports = useMemo(
+    () => (reports || []).filter((report) => report.report_type === "lost"),
+    [reports],
+  );
+  const foundReports = useMemo(
+    () => (reports || []).filter((report) => report.report_type === "found"),
+    [reports],
+  );
+  const feedReports = useMemo(
+    () => filterReports(reports, feedFilter),
+    [reports, feedFilter],
+  );
+  const visibleFeed = feedReports.slice(0, feedLimit);
 
   function handleSearch(event) {
     event.preventDefault();
     onNavigate("/browse");
+  }
+
+  function handleFeedTab(value) {
+    setFeedFilter(value);
+    setFeedLimit(6);
   }
 
   return (
@@ -157,12 +225,13 @@ export default function HomePage({
       <section className="hero" aria-labelledby="hero-heading">
         <div className="hero__glow hero__glow--blue" aria-hidden="true" />
         <div className="hero__glow hero__glow--green" aria-hidden="true" />
+        <div className="hero__lines" aria-hidden="true" />
 
         <div className="hero__grid">
           <div className="hero__copy">
-            <span className="eyebrow">
-              <Sparkles size={14} aria-hidden="true" />
-              Smart campus lost &amp; found
+            <span className="eyebrow eyebrow--pill">
+              <span className="live-dot" aria-hidden="true" />
+              Live campus lost &amp; found
             </span>
 
             <h1 id="hero-heading">
@@ -172,7 +241,7 @@ export default function HomePage({
 
             <p className="hero__lede">
               One calm place for everything your campus loses and finds. Report
-              an item, let the match engine compare the details, and reconnect
+              an item, let the match engine compare every detail, and reconnect
               when the signal is strong.
             </p>
 
@@ -289,6 +358,21 @@ export default function HomePage({
               )}
             </div>
 
+            <div className="hero-signals" aria-hidden="true">
+              <div className="hero-signals__head">
+                <span>
+                  <BadgeCheck size={14} aria-hidden="true" />
+                  What the engine compares
+                </span>
+                <span>7 signals</span>
+              </div>
+              <div className="hero-signals__chips">
+                {SIGNALS.map((signal) => (
+                  <span key={signal}>{signal}</span>
+                ))}
+              </div>
+            </div>
+
             <div className="hero-board__footer">
               <ShieldCheck size={17} aria-hidden="true" />
               <div>
@@ -302,59 +386,98 @@ export default function HomePage({
         </div>
 
         <div className="hero-stats">
-          <div className="hero-stat">
+          <button
+            type="button"
+            className="hero-stat"
+            onClick={() => onNavigate("/browse")}
+          >
             <span className="hero-stat__icon hero-stat__icon--blue">
               <Inbox size={17} aria-hidden="true" />
             </span>
-            <div>
+            <span className="hero-stat__body">
               <strong>{counts.all}</strong>
               <span>Open reports</span>
-            </div>
-          </div>
+            </span>
+          </button>
 
-          <div className="hero-stat">
+          <button
+            type="button"
+            className="hero-stat"
+            onClick={() => onNavigate("/browse/lost")}
+          >
             <span className="hero-stat__icon hero-stat__icon--amber">
               <Search size={17} aria-hidden="true" />
             </span>
-            <div>
+            <span className="hero-stat__body">
               <strong>{counts.lost}</strong>
               <span>Lost items</span>
-            </div>
-          </div>
+            </span>
+          </button>
 
-          <div className="hero-stat">
+          <button
+            type="button"
+            className="hero-stat"
+            onClick={() => onNavigate("/browse/found")}
+          >
             <span className="hero-stat__icon hero-stat__icon--green">
               <PackageOpen size={17} aria-hidden="true" />
             </span>
-            <div>
+            <span className="hero-stat__body">
               <strong>{counts.found}</strong>
               <span>Found items</span>
-            </div>
-          </div>
+            </span>
+          </button>
 
-          <div className="hero-stat">
+          <div className="hero-stat hero-stat--static">
             <span className="hero-stat__icon hero-stat__icon--violet">
               <HeartHandshake size={17} aria-hidden="true" />
             </span>
-            <div>
+            <span className="hero-stat__body">
               <strong>70%</strong>
               <span>Contact unlock</span>
-            </div>
+            </span>
           </div>
         </div>
       </section>
+
+      <div className="home-marquee" aria-hidden="true">
+        <div className="home-marquee__track">
+          {["Lost", "Found", "Matched", "Reunited"].map((word) => (
+            <span key={word}>
+              {word}
+              <Sparkles size={12} />
+            </span>
+          ))}
+          {["Lost", "Found", "Matched", "Reunited"].map((word) => (
+            <span key={`${word}-2`}>
+              {word}
+              <Sparkles size={12} />
+            </span>
+          ))}
+        </div>
+      </div>
 
       <section
         className="home-section category-section"
         aria-labelledby="categories-heading"
       >
-        <div className="section-head">
-          <span className="eyebrow">Browse by category</span>
-          <h2 id="categories-heading">Start with what you need.</h2>
-          <p>
-            Lost and found live side by side. Open a category to see every open
-            report from the community.
-          </p>
+        <div className="section-head section-head--row">
+          <div>
+            <span className="eyebrow">
+              <Layers3 size={14} aria-hidden="true" />
+              Browse by category
+            </span>
+            <h2 id="categories-heading">Start with what you need.</h2>
+            <p>
+              Lost, found, or every upload from the community. Each category
+              opens straight from the home page, so you can act fast.
+            </p>
+          </div>
+
+          <span className="section-note">
+            <span className="live-dot" aria-hidden="true" />
+            {counts.all} live uploads
+          </span>
         </div>
 
         <div className="category-grid">
@@ -373,12 +496,14 @@ export default function HomePage({
             <h3>Lost items</h3>
             <p>
               Phones, wallets, bottles and everything else that slipped away.
-              Find a match or help someone recover theirs.
+              Open the lost feed and check for possible matches.
             </p>
+
+            <CategoryPreview reports={lostReports} />
 
             <span className="category-card__cta">
               Browse lost reports
-              <ArrowRight size={16} aria-hidden="true" />
+              <ArrowUpRight size={16} aria-hidden="true" />
             </span>
           </AppLink>
 
@@ -396,24 +521,65 @@ export default function HomePage({
 
             <h3>Found items</h3>
             <p>
-              Picked something up? See what the community has found, or publish
-              it and earn 15 credits for helping.
+              Picked something up? Browse found uploads from others or publish
+              what you found to help someone get it back.
             </p>
+
+            <CategoryPreview reports={foundReports} />
 
             <span className="category-card__cta">
               Browse found reports
-              <ArrowRight size={16} aria-hidden="true" />
+              <ArrowUpRight size={16} aria-hidden="true" />
+            </span>
+          </AppLink>
+
+          <AppLink
+            to="/browse"
+            onNavigate={onNavigate}
+            className="category-card category-card--all"
+          >
+            <span className="category-card__top">
+              <span className="category-card__icon">
+                <Inbox size={22} aria-hidden="true" />
+              </span>
+              <span className="category-card__count">{counts.all} uploads</span>
+            </span>
+
+            <h3>All uploaded details</h3>
+            <p>
+              See every lost and found report uploaded by people in one place.
+              Search, compare, and find the right match quickly.
+            </p>
+
+            <span className="category-card__preview category-card__preview--all">
+              <span>{counts.lost} lost</span>
+              <span>{counts.found} found</span>
+              <span>{counts.all} total</span>
+            </span>
+
+            <span className="category-card__cta">
+              View all uploads
+              <ArrowUpRight size={16} aria-hidden="true" />
             </span>
           </AppLink>
         </div>
       </section>
 
-      <section className="home-section" aria-labelledby="recent-heading">
+      <section
+        className="home-section uploads-section"
+        aria-labelledby="recent-heading"
+      >
         <div className="section-head section-head--row">
           <div>
-            <span className="eyebrow">Fresh from the community</span>
-            <h2 id="recent-heading">Recent uploads</h2>
-            <p>Every report is a chance for something to find its way home.</p>
+            <span className="eyebrow">
+              <Inbox size={14} aria-hidden="true" />
+              Community uploads
+            </span>
+            <h2 id="recent-heading">All uploaded details</h2>
+            <p>
+              Browse every lost and found report uploaded by people. Switch
+              between categories without leaving the page.
+            </p>
           </div>
 
           <AppLink
@@ -421,9 +587,28 @@ export default function HomePage({
             onNavigate={onNavigate}
             className="section-link"
           >
-            View all reports
+            Open full browse page
             <ArrowRight size={15} aria-hidden="true" />
           </AppLink>
+        </div>
+
+        <div
+          className="feed-tabs"
+          role="group"
+          aria-label="Filter community uploads"
+        >
+          {FEED_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              className={`feed-tab${feedFilter === tab.value ? " is-active" : ""}`}
+              aria-pressed={feedFilter === tab.value}
+              onClick={() => handleFeedTab(tab.value)}
+            >
+              {tab.label}
+              <span>{counts[tab.value]}</span>
+            </button>
+          ))}
         </div>
 
         {loading ? (
@@ -432,29 +617,47 @@ export default function HomePage({
             <HomeSkeleton />
             <HomeSkeleton />
           </div>
-        ) : recent.length > 0 ? (
-          <div className="home-feed-grid">
-            {recent.map((report) => (
-              <HomeReportCard
-                key={report.id}
-                report={report}
-                onNavigate={onNavigate}
-              />
-            ))}
-          </div>
+        ) : visibleFeed.length > 0 ? (
+          <>
+            <div className="home-feed-grid">
+              {visibleFeed.map((report) => (
+                <HomeReportCard
+                  key={report.id}
+                  report={report}
+                  onNavigate={onNavigate}
+                />
+              ))}
+            </div>
+
+            {feedReports.length > visibleFeed.length && (
+              <div className="feed-more">
+                <button
+                  type="button"
+                  className="btn btn--ghost"
+                  onClick={() => setFeedLimit((limit) => limit + 6)}
+                >
+                  Load more uploads
+                  <ArrowRight size={15} aria-hidden="true" />
+                </button>
+                <span>
+                  Showing {visibleFeed.length} of {feedReports.length}
+                </span>
+              </div>
+            )}
+          </>
         ) : (
           <div className="home-empty">
             <span className="home-empty__icon">
               <Inbox size={24} aria-hidden="true" />
             </span>
-            <h3>No reports yet</h3>
+            <h3>No {feedFilter === "all" ? "" : `${feedFilter} `}reports yet</h3>
             <p>
               Be the first to put something on the map. It only takes a minute.
             </p>
             <button
               type="button"
               className="btn btn--primary"
-              onClick={() => onReport("lost")}
+              onClick={() => onReport(feedFilter === "found" ? "found" : "lost")}
             >
               Report an item
               <ArrowRight size={15} aria-hidden="true" />
@@ -465,7 +668,10 @@ export default function HomePage({
 
       <section className="home-section how-section" aria-labelledby="how-heading">
         <div className="section-head section-head--center">
-          <span className="eyebrow">How it works</span>
+          <span className="eyebrow">
+            <Sparkles size={14} aria-hidden="true" />
+            How it works
+          </span>
           <h2 id="how-heading">Three steps. One happy reunion.</h2>
           <p>
             No group chats, no endless scrolling. Just a focused place for lost
@@ -489,14 +695,46 @@ export default function HomePage({
             );
           })}
         </div>
+
+        <div className="home-proof">
+          <div className="home-proof__item">
+            <BadgeCheck size={18} aria-hidden="true" />
+            <div>
+              <strong>7-field comparison</strong>
+              <span>Item, category, colour, brand, place, date and description.</span>
+            </div>
+          </div>
+
+          <div className="home-proof__item">
+            <LockKeyhole size={18} aria-hidden="true" />
+            <div>
+              <strong>Contact stays private</strong>
+              <span>Only released to the reporter when a pair scores 70% or more.</span>
+            </div>
+          </div>
+
+          <div className="home-proof__item">
+            <Coins size={18} aria-hidden="true" />
+            <div>
+              <strong>Credits for helping</strong>
+              <span>Earn 10 credits for a lost report and 15 for a found one.</span>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section className="home-cta" aria-labelledby="cta-heading">
         <div className="home-cta__glow" aria-hidden="true" />
 
         <div className="home-cta__copy">
-          <span className="eyebrow eyebrow--light">Keep the chain going</span>
-          <h2 id="cta-heading">Every report makes the next match possible.</h2>
+          <span className="eyebrow eyebrow--light">
+            <HeartHandshake size={14} aria-hidden="true" />
+            Keep the chain going
+          </span>
+          <h2 id="cta-heading">
+            Every report makes the next{" "}
+            <span className="home-cta__accent">reunion</span> possible.
+          </h2>
           <p>
             Found something? Publish it in under a minute, earn 15 credits and
             give someone a very good day.

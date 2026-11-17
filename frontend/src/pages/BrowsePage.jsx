@@ -177,7 +177,9 @@ export default function BrowsePage({
             </div>
 
             <div className="reports__heading-actions">
-              <span className="count-pill">{counts.all} open</span>
+              <span className="count-pill">
+                {counts[filter] ?? counts.all} open
+              </span>
             </div>
           </div>
 

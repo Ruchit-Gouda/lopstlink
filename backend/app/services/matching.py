@@ -18,11 +18,11 @@ from typing import Any
 
 # Relative importance of each field when comparing two reports.
 FIELD_WEIGHTS = {
-    "item_name": 0.30,
-    "description": 0.16,
-    "category": 0.14,
+    "item_name": 0.32,
+    "description": 0.15,
+    "category": 0.12,
     "color": 0.14,
-    "location_text": 0.13,
+    "location_text": 0.14,
     "brand": 0.08,
     "date": 0.05,
 }
@@ -55,12 +55,24 @@ PHRASE_SYNONYMS = {
     "key chain": "keychain",
     "charging cable": "cable",
     "usb cable": "cable",
+    "pen drive": "pendrive",
+    "flash drive": "pendrive",
+    "usb drive": "pendrive",
+    "thumb drive": "pendrive",
+    "memory card": "memorycard",
+    "hard disk": "harddisk",
+    "bluetooth speaker": "speaker",
     "tiffin box": "lunchbox",
     "lunch box": "lunchbox",
     "note book": "notebook",
     "lap top": "laptop",
     "bus stop": "bus stand",
     "busstop": "bus stand",
+    "computer lab": "lab",
+    "science lab": "lab",
+    "exam hall": "examhall",
+    "food court": "canteen",
+    "american tourister": "americantourister",
 }
 
 # Single-word spelling variants mapped to one canonical word.
@@ -109,15 +121,37 @@ SYNONYMS = {
     "keys": "key",
     "adaptor": "adapter",
     "powerbank": "powerbank",
+    "powerbanks": "powerbank",
     "laptops": "laptop",
     "tiffin": "lunchbox",
     "smartwatch": "watch",
     "watches": "watch",
     "shoes": "shoe",
+    "sneakers": "sneaker",
+    "boots": "boot",
     "slippers": "slipper",
     "sandals": "sandal",
+    "chappal": "slipper",
+    "chappals": "slipper",
+    "flipflop": "slipper",
+    "flipflops": "slipper",
     "trousers": "trouser",
     "glasses": "glasses",
+    "spectacle": "glasses",
+    "pendrive": "pendrive",
+    "pendrives": "pendrive",
+    "flashdrive": "pendrive",
+    "thumbdrive": "pendrive",
+    "usbdrive": "pendrive",
+    "memorystick": "pendrive",
+    "harddisk": "harddisk",
+    "memorycard": "memorycard",
+    "speakers": "speaker",
+    "soundbar": "speaker",
+    "documents": "document",
+    "docs": "document",
+    "certificates": "certificate",
+    "marksheets": "marksheet",
     "colour": "color",
     "colours": "color",
     "gray": "grey",
@@ -212,7 +246,17 @@ STOPWORDS = {
 
 _WORD_RE = re.compile(r"[^a-z0-9\s]+")
 _CAMEL_RE = re.compile(r"(?<=[a-z])(?=\d)|(?<=\d)(?=[a-z])")
-_NO_STEM = {"glasses", "canvas", "campus", "status", "series", "species", "news"}
+_NO_STEM = {
+    "glasses",
+    "canvas",
+    "campus",
+    "status",
+    "series",
+    "species",
+    "news",
+    "shorts",
+    "jeans",
+}
 
 # Product taxonomies. Two reports whose item/category words land in the same
 # group are treated as the same kind of object even if the wording differs.
@@ -261,36 +305,87 @@ CONCEPT_GROUPS = {
         "ultrabook",
     },
     "tablet": {"tablet", "ipad", "tab"},
-    "earphones": {"earphones", "headphones", "airpods", "buds", "headset"},
-    "watch": {"watch", "fitbit", "fireboltt", "boat", "noise"},
+    "earphones": {
+        "earphones",
+        "headphones",
+        "airpods",
+        "buds",
+        "headset",
+        "earbud",
+    },
+    "speaker": {"speaker", "soundbar"},
+    "watch": {"watch", "smartwatch", "fitbit", "fireboltt", "smartband", "fitnessband"},
     "wallet": {"wallet", "purse", "billfold"},
-    "bag": {"bag", "backpack", "rucksack", "handbag", "sling", "trolley"},
+    "bag": {
+        "bag",
+        "backpack",
+        "rucksack",
+        "handbag",
+        "sling",
+        "trolley",
+        "luggage",
+        "suitcase",
+    },
     "bottle": {"bottle", "flask", "sipper", "tumbler"},
     "key": {"key", "keychain"},
     "glasses": {"glasses", "spectacles", "sunglasses", "goggles"},
-    "id": {"id", "aadhar", "pan", "license", "passport", "card", "identity"},
+    "id": {
+        "id",
+        "aadhar",
+        "pan",
+        "license",
+        "passport",
+        "card",
+        "identity",
+        "document",
+        "certificate",
+        "marksheet",
+    },
     "book": {"book", "notebook", "diary", "register", "novel", "textbook"},
     "charger": {"charger", "adapter", "cable", "powerbank"},
+    "storage": {
+        "pendrive",
+        "usb",
+        "flashdrive",
+        "harddisk",
+        "memorycard",
+        "sd",
+        "drive",
+    },
+    "mouse": {"mouse"},
+    "keyboard": {"keyboard"},
     "umbrella": {"umbrella"},
     "calculator": {"calculator"},
     "lunchbox": {"lunchbox", "tiffin"},
-    "stationery": {"pen", "pencil", "eraser", "sharpener", "scale", "ruler"},
-    "clothing": {
+    "pen": {"pen", "ballpoint", "gelpen"},
+    "pencil": {"pencil", "mechanicalpencil"},
+    "stationery": {"eraser", "sharpener", "scale", "ruler", "geometrybox"},
+    "upperwear": {
         "shirt",
         "tshirt",
-        "jacket",
+        "tee",
+        "top",
+        "blouse",
         "hoodie",
         "sweater",
-        "jeans",
-        "trouser",
-        "pant",
-        "cap",
-        "hat",
-        "shoe",
-        "sandal",
-        "slipper",
+        "sweatshirt",
+        "jacket",
+        "blazer",
+        "coat",
+        "uniform",
     },
-    "jewellery": {"ring", "chain", "bracelet", "earring", "necklace"},
+    "lowerwear": {"trouser", "pant", "jeans", "shorts", "skirt"},
+    "footwear": {"shoe", "sandal", "slipper", "sneaker", "boot"},
+    "headwear": {"cap", "hat"},
+    "jewellery": {
+        "ring",
+        "chain",
+        "bracelet",
+        "earring",
+        "necklace",
+        "anklet",
+        "pendant",
+    },
 }
 
 TOKEN_TO_CONCEPT: dict[str, str] = {}
@@ -340,6 +435,26 @@ BRAND_ALIASES = {
     "noise": "noise",
     "fireboltt": "fireboltt",
     "fitbit": "fitbit",
+    "apple": "apple",
+    "casio": "casio",
+    "fastrack": "fastrack",
+    "titan": "titan",
+    "sonata": "sonata",
+    "milton": "milton",
+    "cello": "cello",
+    "borosil": "borosil",
+    "sandisk": "sandisk",
+    "sony": "sony",
+    "jbl": "jbl",
+    "bose": "bose",
+    "boult": "boult",
+    "msi": "msi",
+    "gigabyte": "gigabyte",
+    "zebronics": "zebronics",
+    "philips": "philips",
+    "skybags": "skybags",
+    "wildcraft": "wildcraft",
+    "americantourister": "american tourister",
 }
 
 # Colour families let "navy" match "blue" and "ivory" match "white".
@@ -398,6 +513,43 @@ GENERIC_ITEM_WORDS = {
     "college",
 } | {word for words in COLOR_FAMILIES.values() for word in words}
 
+# Category labels that carry almost no identity on their own. They are ignored
+# when comparing categories so "Accessories" vs "Other" does not drag a strong
+# item match down.
+GENERIC_CATEGORIES = {
+    "accessories",
+    "accessory",
+    "other",
+    "others",
+    "misc",
+    "miscellaneous",
+    "general",
+    "personal",
+    "item",
+    "items",
+}
+
+# Campus locations are often described with different words ("canteen" vs
+# "cafeteria", "bus stop" vs "bus stand"). Matching places earn a floor so a
+# strong item pair is not punished for using the local name.
+LOCATION_GROUPS = {
+    "canteen": {"canteen", "cafeteria", "cafe", "mess", "foodcourt"},
+    "library": {"library", "lib"},
+    "hostel": {"hostel", "room", "block", "warden"},
+    "lab": {"lab", "laboratory", "computerlab"},
+    "examhall": {"examhall", "hall"},
+    "ground": {"ground", "playground", "sports", "stadium", "court"},
+    "busstand": {"busstand", "bus", "stop"},
+    "parking": {"parking", "parkinglot", "bikeparking", "carparking"},
+    "gate": {"gate", "entrance"},
+    "classroom": {"classroom", "class"},
+}
+
+TOKEN_TO_LOCATION: dict[str, str] = {}
+for _location, _words in LOCATION_GROUPS.items():
+    for _word in _words:
+        TOKEN_TO_LOCATION.setdefault(_word, _location)
+
 
 def _stem(token: str) -> str:
     """Very light plural stemming that leaves short words alone."""
@@ -453,16 +605,56 @@ def _char_ngrams(text: str, size: int) -> set[str]:
 
 
 def _char_similarity(text_a: str, text_b: str) -> float:
-    """Jaccard similarity over bigrams and trigrams."""
+    """Dice similarity over bigrams and trigrams."""
 
     if not text_a or not text_b:
         return 0.0
 
     grams_a = _char_ngrams(text_a, 2) | _char_ngrams(text_a, 3)
     grams_b = _char_ngrams(text_b, 2) | _char_ngrams(text_b, 3)
-    union = grams_a | grams_b
+    total = len(grams_a) + len(grams_b)
 
-    return len(grams_a & grams_b) / len(union) if union else 0.0
+    return 2 * len(grams_a & grams_b) / total if total else 0.0
+
+
+def _token_coverage(tokens_a: set[str], tokens_b: set[str]) -> float:
+    """How much of the smaller token set is covered by the larger one.
+
+    Exact tokens count fully; near-spelling variants (typos, abbreviations)
+    count when they are close enough. This keeps "blue bottle" and
+    "bottle blue plastic" strongly related without rewarding unrelated words.
+    """
+
+    if not tokens_a or not tokens_b:
+        return 0.0
+
+    if len(tokens_a) > len(tokens_b):
+        tokens_a, tokens_b = tokens_b, tokens_a
+
+    total = 0.0
+
+    for token in tokens_a:
+        if token in tokens_b:
+            total += 1.0
+            continue
+
+        if len(token) < 4:
+            continue
+
+        best = 0.0
+
+        for other in tokens_b:
+            if len(other) < 4:
+                continue
+
+            ratio = SequenceMatcher(None, token, other).ratio()
+
+            if ratio >= 0.78:
+                best = max(best, ratio)
+
+        total += best
+
+    return total / len(tokens_a)
 
 
 def _fuzzy_token_similarity(tokens_a: set[str], tokens_b: set[str]) -> float:
@@ -485,7 +677,7 @@ def _fuzzy_token_similarity(tokens_a: set[str], tokens_b: set[str]) -> float:
 
             ratio = SequenceMatcher(None, token, other).ratio()
 
-            if ratio >= 0.82:
+            if ratio >= 0.78:
                 best = max(best, ratio)
 
         scores.append(best)
@@ -519,19 +711,31 @@ def _text_similarity(
     containment = len(shared) / min(len(set_a), len(set_b)) * containment_cap
     jaccard = len(shared) / len(set_a | set_b)
     fuzzy_score = _fuzzy_token_similarity(set_a, set_b)
+    coverage = _token_coverage(set_a, set_b) * containment_cap
 
-    # Character n-grams and whole-string edits are meant to absorb typos in
-    # otherwise related text. Applying them to two unrelated sentences ("cut
-    # my hairs" vs "moodbidri bus stand") invents similarity out of noise.
+    # Character n-grams and whole-string edits absorb typos and phrasing
+    # differences. When there are no shared content tokens we still allow a
+    # reduced contribution so related reports described differently can match,
+    # but keep it conservative to avoid inventing similarity from noise.
+    char_raw = _char_similarity(text_a, text_b)
+    sequence_raw = SequenceMatcher(None, text_a, text_b).ratio()
     if shared:
-        char_score = _char_similarity(text_a, text_b)
-        sequence_score = SequenceMatcher(None, text_a, text_b).ratio() * 0.95
+        char_score = char_raw
+        sequence_score = sequence_raw * 0.95
     else:
-        char_score = 0.0
-        sequence_score = 0.0
+        char_score = char_raw * 0.45
+        sequence_score = sequence_raw * 0.4
 
     return min(
-        max(dice, containment, jaccard, char_score, sequence_score, fuzzy_score),
+        max(
+            dice,
+            containment,
+            jaccard,
+            char_score,
+            sequence_score,
+            fuzzy_score,
+            coverage,
+        ),
         1.0,
     )
 
@@ -594,14 +798,22 @@ def _item_similarity(
     generic_b = is_generic(tokens_b)
 
     if shared_concepts:
-        score = max(score, 0.58)
+        score = max(score, 0.70)
 
         if generic_a or generic_b:
             # One report only says "Phone"; the other has the model. Treat the
             # generic title as compatible with a specific item of that family.
-            score = max(score, 0.86 if (brand_a or brand_b) else 0.78)
+            if brand_a and brand_b and (brand_a & brand_b):
+                score = max(score, 0.96)
+            else:
+                score = max(score, 0.92 if (brand_a or brand_b) else 0.86)
         else:
-            score = max(score, 0.68)
+            if brand_a and brand_b and (brand_a & brand_b):
+                score = max(score, 0.90)
+            elif brand_a or brand_b:
+                score = max(score, 0.82)
+            else:
+                score = max(score, 0.78)
 
     if brand_a and brand_b:
         if brand_a & brand_b:
@@ -634,6 +846,21 @@ def _category_similarity(
 
     if _concepts(tokens_a) & _concepts(tokens_b):
         return 1.0
+
+    generic_a = bool(tokens_a) and all(
+        token in GENERIC_CATEGORIES for token in tokens_a
+    )
+    generic_b = bool(tokens_b) and all(
+        token in GENERIC_CATEGORIES for token in tokens_b
+    )
+
+    # "Accessories" or "Other" says nothing about the item. Ignoring the field
+    # lets the item, colour and location evidence decide the score.
+    if generic_a and generic_b:
+        return None
+
+    if generic_a or generic_b:
+        return 0.45
 
     return _text_similarity(
         report_a.get("category"),
@@ -707,6 +934,33 @@ def _brand_similarity(
     return 0.0
 
 
+def _location_concepts(value: Any) -> set[str]:
+    """Small set of campus place families used to bridge local wording."""
+
+    return {
+        TOKEN_TO_LOCATION[token]
+        for token in _prepare(value)[0]
+        if token in TOKEN_TO_LOCATION
+    }
+
+
+def _location_similarity(
+    report_a: dict[str, Any],
+    report_b: dict[str, Any],
+) -> float | None:
+    value_a = report_a.get("location_text")
+    value_b = report_b.get("location_text")
+
+    score = _text_similarity(value_a, value_b, containment_cap=0.95)
+
+    if _location_concepts(value_a) & _location_concepts(value_b):
+        # "Cafeteria" and "canteen" are the same place even if the text shares
+        # no words, so give a strong floor to the match.
+        score = max(score or 0.0, 0.88)
+
+    return score
+
+
 def _parse_date(value: Any) -> date | None:
     if isinstance(value, datetime):
         return value.date()
@@ -737,14 +991,16 @@ def _date_similarity(
     if days <= 1:
         return 1.0
     if days <= 3:
-        return 0.9
+        return 0.95
     if days <= 7:
-        return 0.75
+        return 0.85
     if days <= 14:
-        return 0.55
+        return 0.7
     if days <= 30:
+        return 0.5
+    if days <= 60:
         return 0.3
-    return 0.1
+    return 0.15
 
 
 def _field_similarities(
@@ -761,11 +1017,7 @@ def _field_similarities(
         "category": _category_similarity(lost_report, found_report),
         "color": _color_similarity(lost_report, found_report),
         "brand": _brand_similarity(lost_report, found_report),
-        "location_text": _text_similarity(
-            lost_report.get("location_text"),
-            found_report.get("location_text"),
-            containment_cap=0.95,
-        ),
+        "location_text": _location_similarity(lost_report, found_report),
         "date": _date_similarity(lost_report, found_report),
     }
 
@@ -773,30 +1025,53 @@ def _field_similarities(
 def _evidence_bonus(fields: dict[str, float]) -> float:
     """Reward several independent fields pointing at the same pair.
 
-    A weighted average of six fields can look lukewarm even when most of them
-    agree. The bonus is deliberately small and capped so a single loose field
-    cannot lift an unrelated pair over the match threshold.
+    A weighted average can look lukewarm even when most fields agree. The
+    bonus is capped so a single loose field cannot lift an unrelated pair over
+    the match threshold.
     """
+
+    item = fields.get("item_name") or 0
+    category = fields.get("category") or 0
+    color = fields.get("color") or 0
+    location = fields.get("location_text") or 0
+    brand = fields.get("brand") or 0
+    event_date = fields.get("date") or 0
+    description = fields.get("description") or 0
 
     supporting = 0
 
-    if (fields.get("item_name") or 0) >= 0.75:
+    if item >= 0.7:
         supporting += 1
-    if (fields.get("category") or 0) >= 0.85:
+    if category >= 0.8:
         supporting += 1
-    if (fields.get("color") or 0) >= 0.8:
+    if color >= 0.75:
         supporting += 1
-    if (fields.get("location_text") or 0) >= 0.6:
+    if location >= 0.55:
         supporting += 1
-    if (fields.get("brand") or 0) >= 0.85:
+    if brand >= 0.85:
         supporting += 1
-    if (fields.get("date") or 0) >= 0.75:
+    if event_date >= 0.7:
+        supporting += 1
+    if description >= 0.55:
         supporting += 1
 
-    if supporting < 2:
-        return 0.0
+    bonus = 0.0
 
-    return min(supporting * 1.4, 6.0)
+    if supporting >= 2:
+        bonus += supporting * 1.6
+
+    # Strong core identity (same kind of item/category/brand) with at least one
+    # corroborating detail deserves a meaningful lift even when wording differs.
+    if item >= 0.8 and category >= 0.8 and (color >= 0.7 or location >= 0.45 or brand >= 0.85):
+        bonus += 3.0
+
+    if item >= 0.75 and location >= 0.7 and (color >= 0.6 or event_date >= 0.55):
+        bonus += 2.0
+
+    if description >= 0.7 and item >= 0.7:
+        bonus += 1.0
+
+    return min(bonus, 10.0)
 
 
 def score_reports(
@@ -823,6 +1098,38 @@ def score_reports(
 
     raw_score = weighted_total / weight_used * 100 if weight_used else 0.0
     score = min(raw_score + _evidence_bonus(similarities), 100.0)
+
+    core = similarities.get("item_name") or 0.0
+    category = similarities.get("category") or 0.0
+    color = similarities.get("color") or 0.0
+    location = similarities.get("location_text") or 0.0
+    brand = similarities.get("brand") or 0.0
+    event_date = similarities.get("date") or 0.0
+
+    color_mismatch = (
+        color <= 0.1
+        and bool(str(lost_report.get("color") or "").strip())
+        and bool(str(found_report.get("color") or "").strip())
+    )
+
+    # When the same kind of item is confirmed by category/brand and at least
+    # one more detail, a plain weighted average can still look lukewarm. Lift
+    # clear pairs into high-confidence territory. Conflicting colours block
+    # the lift because they are strong evidence of two different items.
+    if not color_mismatch:
+        if core >= 0.86 and (category >= 0.8 or brand >= 0.85) and (
+            color >= 0.6
+            or location >= 0.6
+            or event_date >= 0.7
+            or brand >= 0.85
+        ):
+            score = max(score, 85.0)
+
+        if core >= 0.92 and (category >= 0.8 or brand >= 0.85) and (
+            (color >= 0.75 and location >= 0.6)
+            or (brand >= 0.85 and (color >= 0.6 or location >= 0.6))
+        ):
+            score = max(score, 92.0)
 
     item_concepts_lost = _concepts(_prepare(lost_report.get("item_name"))[0])
     item_concepts_found = _concepts(_prepare(found_report.get("item_name"))[0])
@@ -858,15 +1165,10 @@ def score_reports(
                 # Same brand but explicitly different model numbers (iPhone 13
                 # vs iPhone 17) should stay just below the contact unlock.
                 score = min(score, 69.0)
-            elif (
-                (similarities.get("color") or 0) <= 0.1
-                and (similarities.get("location_text") or 0) < 0.4
-                and str(lost_report.get("color") or "").strip()
-                and str(found_report.get("color") or "").strip()
-            ):
-                # Two different colours at two different places are conflicting
-                # evidence; keep the pair visible but well below contact unlock.
-                score = min(score, 58.0)
+            elif color_mismatch:
+                # Two clearly different colours are strong evidence of two
+                # different items; keep the pair visible but below unlock.
+                score = min(score, 64.0)
 
     reasons = [
         FIELD_LABELS[field]
